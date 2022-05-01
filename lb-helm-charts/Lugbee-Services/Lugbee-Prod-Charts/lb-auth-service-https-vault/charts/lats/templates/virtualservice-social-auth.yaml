@@ -1,0 +1,73 @@
+apiVersion: networking.istio.io/v1alpha3
+kind: VirtualService
+metadata:
+  name: {{ template "lats.fullname" . }}-social-auth
+  labels:
+    app: {{ template "lats.name" . }}
+    chart: {{ template "lats.chart" . }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+spec:
+  hosts:
+  {{- range .Values.social.hosts }}
+  - {{ . }}
+  {{- end }}
+  #- graph.facebook.com
+  #- www.googleapis.com
+  #- accounts.google.com
+  tls:
+  - match:
+    - port: 443
+      sniHosts:
+      #- graph.facebook.com
+      - apis.google.com
+    route:
+    - destination:
+        #host: graph.facebook.com
+        host: apis.google.com
+        port:
+          number: 443
+  - match:
+    - port: 443
+      sniHosts:
+      #- www.googleapis.com
+      - connect.facebook.com
+    route:
+    - destination:
+        #host: www.googleapis.com
+        host: connect.facebook.com
+        port:
+          number: 443
+  - match:
+    - port: 443
+      sniHosts:
+      #- accounts.google.com
+      - maps.googleapis.com
+    route:
+    - destination:
+        #host: accounts.google.com
+        host: maps.googleapis.com
+        port:
+          number: 443
+  - match:
+    - port: 443
+      sniHosts:
+      #- accounts.google.com
+      - www.cashfree.com
+    route:
+    - destination:
+        #host: accounts.google.com
+        host: www.cashfree.com
+        port:
+          number: 443
+  - match:
+    - port: 443
+      sniHosts:
+      #- accounts.google.com
+      - storage.googleapis.com
+    route:
+    - destination:
+        #host: accounts.google.com
+        host: storage.googleapis.com
+        port:
+          number: 443

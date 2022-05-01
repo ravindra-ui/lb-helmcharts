@@ -1,0 +1,99 @@
+apiVersion: helm.toolkit.fluxcd.io/v2beta1
+kind: HelmRelease
+metadata:
+  name: lb-auth-service
+  namespace: flux-system
+spec:
+  chart:
+    spec:
+      chart: charts/lb-auth-service
+      sourceRef:
+        kind: GitRepository
+        name: flux-helm-charts
+  interval: 30s
+  targetNamespace: lb-auth
+  values:
+    replicaCount: 1
+    image:
+      repository: gcr.io/tecore-dev/${NAMESPACE}/${APP_NAME}
+      tag: ${IMAGE_BUILD_TAG}
+      pullPolicy: IfNotPresent
+    resources:
+      limits:
+        cpu: 100m
+        memory: 500Mi
+      requests:
+        cpu: 30m
+        memory: 200Mi
+    nodeSelector: {}
+    tolerations: []
+    affinity: {}
+    # SERVER PROPERTIES  
+    service:
+      type: "ClusterIP"
+      port: 8080
+    gateway:
+      selector:
+      - api-gateway.istio-system.svc.cluster.local
+      hosts:
+      - auth.lugbee.com
+    social:
+      hosts:
+      - apis.google.com
+      - connect.facebook.com
+      - maps.googleapis.com
+      - www.cashfree.com
+      - storage.googleapis.com
+    # CASSANDRA PROPERTIES
+    cassandra:
+      port: 9042
+      keyspace: "lugbee"
+      userName:
+      password:
+      # contactPoints: 127.0.0.1
+      contactPoints: "cassandra.cassandra.svc.cluster.local"
+    redis:
+      #host: "redis-master.redis.svc.cluster.local"
+      host: "redis-ha.redis-ha.svc.cluster.local"
+      port: 6379
+      #password: "7Czm04OkTK"
+      password: "redis123"
+      label: "redis-client=true"
+      sentinel:
+        master: "redis-ha"
+        host1: "redis-ha-announce-0.redis-ha.svc.cluster.local"
+        port1: "26379"
+        host2: "redis-ha-announce-1.redis-ha.svc.cluster.local"
+        port2: "26379"
+        host3: "redis-ha-announce-2.redis-ha.svc.cluster.local"
+        port3: "26379"
+    # SERVICES
+    services:
+      ltms:
+        #address: "https://team.lugbee.com"
+        #port: "443"
+        address: "http://lb-team-ltms.lb-team.svc.cluster.local"
+        port: "8080"
+      lams:
+        #address: "https://account.lugbee.com"
+        address: "http://lb-account-lams.lb-account.svc.cluster.local"
+        port: "8080"
+    # TOKEN PROPERTIES
+    # expireTime is in milli seconds
+    token:
+      auth:
+        secret: "123abc%#TYYU"
+        expireTime: "1800000"
+      access:
+        secret: "123abc*^&*^YRTYRTY"
+      verify:
+        secret: "78787$%#OUUOUIO"
+        expireTime: "86400000"
+      admin:
+        secret: "21^$87454$%##4#TFYT"
+        expireTime: "86400000"
+    #Vault
+    vault:
+      host: "10.0.13.131"
+      port: 8200
+      token: s.7Q33NUMfPu5xWZYMONvxv8eA

@@ -1,0 +1,207 @@
+replicaCount: 1
+
+image:
+  #repository: gcr.io/tl-dev-212306/${NAMESPACE}/${APP_NAME}
+  repository: gcr.io/lugbee-prod/lb-auth/lats
+  # gcr.io/cogent-osprey-252813/lb-auth/lats
+  #tag: develop-12
+  tag: master-0.02
+  pullPolicy: IfNotPresent
+
+resources:
+  limits:
+    cpu: 100m
+    memory: 500Mi
+  requests:
+    cpu: 30m
+    memory: 200Mi
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
+
+# SERVER PROPERTIES
+service:
+  type: "ClusterIP"
+  port: 8080
+
+gateway:
+  selector:
+  - api-gateway.istio-system.svc.cluster.local
+  #- api-gateway
+  hosts:
+  - auth.lugbee.com
+
+social:
+  hosts:
+  #- graph.facebook.com
+  #- www.googleapis.com
+  #- accounts.google.com
+  - apis.google.com
+  - connect.facebook.com
+  - maps.googleapis.com
+  - www.cashfree.com
+  - storage.googleapis.com
+
+# CASSANDRA PROPERTIES
+cassandra:
+  port: 30150
+  keyspace: "lugbee"
+  userName: "cassandra"
+  password: "TLk8ssandra##"
+  contactPoints: "10.152.0.6"
+
+redis:
+  host: 10.152.0.6
+  port: 30035
+  password: "TLRedis##"
+  sentinel:
+    master: "redis-ha"
+    host1: 10.152.0.5
+    port1: 30443
+    host2: 10.152.0.6
+    port2: 30443
+    host3: 10.152.0.7
+    port3: 30443
+
+# label: "redis-client=true"
+
+# SERVICE APIS
+#services:
+#  userLogIn: "http://localhost:8082/lams/user/login"
+#  hostLogIn: "http://localhost:8082/lams/host/login"
+#  adminLogIn: "http://localhost:8085/ltms/login"
+
+services:
+  ltms:
+    #address: "https://team.lugbee.com"
+    #port: "443"
+    address: "http://ltms.lb-team.svc.cluster.local"
+    port: "8080"
+  lams:
+    #address: "https://account.lugbee.com"
+    address: "http://lams.lb-account.svc.cluster.local"
+    port: "8080"
+
+
+# TOKEN PROPERTIES
+# expireTime is in milli seconds
+token:
+  auth:
+    secret: "123abc%#TYYU"
+    expireTime: "1800000"
+  access:
+    secret: "123abc*^&*^YRTYRTY"
+  verify:
+    secret: "78787$%#OUUOUIO"
+    expireTime: "86400000"
+  admin:
+    secret: "21^$87454$%##4#TFYT"
+    expireTime: "86400000"
+
+# SWAGGER PROPERTIES
+swagger:
+  apiVersion: 1.0
+  licenseText: License
+  title: LATS SERVICE
+  description: Service to genrate and validate tokens
+
+#Vault
+# vault:
+#   host: "vault.vault.svc.cluster.local"
+#   port: 8200
+#   token: "s.ttLM1lITwh6V1IyiCcsBIK5R"
+#   scheme: https
+
+spring:
+  cloud:
+    vault:
+      generic:
+        enabled: false
+      host: "vault.vault.svc.cluster.local"
+      port: 8200
+      scheme: https
+      token: "s.ttLM1lITwh6V1IyiCcsBIK5R"
+      authentication: TOKEN
+      ssl:
+        trust-store: "/vault/truststore/ca.jks"
+        trust-store-password: 123456
+        turst-store-cert: "file:///vault/truststore/ca.jks"
+        key-store: "/vault/keystore/vault.jks"
+        key-store-cert: "file:///vault/keystore/vault.jks"
+        key-store-password: 123456
+
+
+
+# =================EXTRASS========================
+## VAULT TEMP
+# application-token : s.ttLM1lITwh6V1IyiCcsBIK5R
+# root_token: s.fVsZs6eOoKAxe0nAVuM8ZVRA
+# file://
+# cert-auth-path: cert
+# - name: SPRING_CLOUD_VAULT_SSL_CERT_AUTH_PATH
+#  value: {{ index .Values.spring.cloud.vault.ssl "cert-auth-path" | quote }}
+
+# SPRING_CLOUD_VAULT_GENERIC_ENABLED
+# SPRING_CLOUD_VAULT_AUTHENTICATION
+# SPRING_CLOUD_VAULT_HOST
+# SPRING_CLOUD_VAULT_PORT
+# SPRING_CLOUD_VAULT_SCHEME
+# SPRING_CLOUD_VAULT_TOKEN
+# SPRING_CLOUD_VAULT_SSL_KEY_STORE
+# SPRING_CLOUD_VAULT_SSL_TRUST_STORE
+# SPRING_CLOUD_VAULT_SSL_TRUST_STORE_PASSWORD
+# SPRING_CLOUD_VAULT_SSL_KEY_STORE_PASSWORD
+# SPRING_CLOUD_VAULT_SSL_CERT_AUTH_PATH
+
+# - name: VAULT_URI
+#   value: {{ .Values.vault.uri | quote }}
+# - name: VAULT_AUTH_PATH
+#   value: {{ .Values.vault.authpath | quote }}
+# - name: VAULT_ACCESS_PATH
+#   value: {{ .Values.vault.accesspath | quote }}
+# - name: VAULT_VERIFY_PATH
+#   value: {{ .Values.vault.verifypath | quote }}
+
+# volumes:
+# - name: vault-certs
+#   secret:
+#     secretName: keystore
+#     items:
+#     - key: keystore.jks
+#       path: /
+
+# Error: release lats failed: admission webhook "validation.istio.io" denied the request: configuration is invalid: 5 errors occurred:
+# TLS match must have at least one SNI host
+# TLS match must have at least one SNI host
+# TLS match must have at least one SNI host
+# TLS match must have at least one SNI host
+# TLS match must have at least one SNI host
+
+#uri: http://vault.default.svc.cluster.local:8200
+#authpath: "auth"
+#accesspath: "access"
+#verifypath: "verify"
+
+#   tls:
+#   - match:
+#     - port: 443
+#       sniHosts:
+#       - auth.lugbee.com
+
+# volumes:
+#  - name: vault-keystore
+#    secret:
+#      secretName: keystore
+#        items:
+#        - key: vault.jks
+#          path: vault.jks
+#      defaultMode: 420
+#  - name: vault-truststore
+#    secret:
+#      secretName: truststore
+#      items:
+#        - key: ca.jks
+#          path: ca.jks

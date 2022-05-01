@@ -1,0 +1,84 @@
+
+# SERVER PROPERTIES
+server:
+  port: 9090
+  servlet:
+    contextPath: /lats
+
+# CASSANDRA PROPERTIES
+cassandra:
+  port: 9042
+  keyspace: lugbee
+  userName: null
+  password: null
+  contactPoints: 127.0.0.1
+
+# REDIS CONFIGURATION
+redis:
+  host: "localhost"
+  port: "6379"
+  password: "none" # Note : Put password value = "none" if their is no password for redis
+  sentinel:
+    master: "master"
+    host1: "localhost"
+    port1: "26379"
+    host2: "localhost"
+    port2: "26379"
+    host3: "localhost"
+    port3: "26379"
+
+# SERVICE APIS
+# service:
+#   userLogIn: http://localhost:8082/lams/user/login
+#   hostLogIn: http://localhost:8082/lams/host/login
+#   adminLogIn: http://localhost:8086/ltms/login
+
+services:
+  lams:
+    address: "http://localhost"
+    port: "8082"
+  ltms:
+    address: "http://localhost"
+    port: "8086"
+
+
+
+# TOKEN PROPERTIES
+# expireTime is in milli seconds
+token:
+  prefix: Bearer
+  issuer: https://auth.lugbee.com
+  auth:
+    secret: 123abc%#TYYU
+    prefix: AuthToken
+    expireTime: 1800000
+  access:
+    secret: 123abc*^&*^YRTYRTY
+    prefix: AccessToken
+  verify:
+    secret: 78787$%#OUUOUIO
+    prefix: VerifyToken
+    expireTime: 86400000 # 1000 * 60 * 60 *24 -> 1 Day
+  admin:
+    secret: 21^$87454$%##4#TFYT
+    prefix: AdminToken
+    expireTime: 86400000
+
+# SWAGGER PROPERTIES
+swagger:
+  apiVersion: 1.0
+  licenseText: License
+  title: LATS SERVICE
+  description: Service to genrate and validate tokens
+
+vault:
+  host: 127.0.0.1
+  port: 8200
+  token: s.AQL6GpU7PySfZqGEJmIg3uUs
+  uri:
+  auth-path: "auth"
+  access-path: "access"
+  verify-path: "verify"
+  auth-expireTime: 0h30m0s
+  verify-expireTime: 24h0m0s
+  admin-expireTime: 24h0m0s

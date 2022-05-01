@@ -1,0 +1,204 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ template "lats.fullname" . }}
+  labels:
+    app: {{ template "lats.name" . }}
+    chart: {{ template "lats.chart" . }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+    redis-client: "true"
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ template "lats.name" . }}
+  template:
+    metadata:
+      labels:
+        app: {{ template "lats.name" . }}
+        release: {{ .Release.Name }}
+    spec:
+# ----volume for vault --- #
+      volumes:
+      - name: vault-keystore
+        secret:
+          secretName: keystore
+          items:
+            - key: vault.jks
+              path: vault.jks
+      - name: vault-truststore
+        secret:
+          secretName: truststore
+          items:
+            - key: ca.jks
+              path: ca.jks
+      containers:
+      - name: lats
+        image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        volumeMounts:
+          - name: vault-keystore
+            mountPath: {{ index .Values.spring.cloud.vault.ssl "key-store" | quote }}
+            subPath: vault.jks
+          - name: vault-truststore
+            mountPath: {{ index .Values.spring.cloud.vault.ssl "trust-store" | quote }}
+            subPath: ca.jks
+        ports:
+        - name: http
+          containerPort: {{ .Values.service.port }}
+        # readinessProbe:
+          # httpGet:
+            # path: /nynja/ethereum/api.v.1.0/version
+            # port: http
+          # successThreshold: 1
+          # failureThreshold: 60
+          # initialDelaySeconds: 15
+          # periodSeconds: 3
+          # timeoutSeconds: 15
+        # livenessProbe:
+          # httpGet:
+            # path: /nynja/ethereum/api.v.1.0/version
+            # port: http
+          # successThreshold: 1
+          # failureThreshold: 15
+          # initialDelaySeconds: 30
+          # periodSeconds: 3
+          # timeoutSeconds: 15
+        resources:
+{{ toYaml .Values.resources | indent 12 }}
+        env:
+        - name: SERVER_PORT
+          value: {{ .Values.service.port | quote }}
+
+# ------ Cassandra -------- #
+        - name: CASSANDRA_PORT
+          value: {{ .Values.cassandra.port | quote }}
+        - name: CASSANDRA_KEYSPACE
+          value: {{ .Values.cassandra.keyspace | quote }}
+{{- if .Values.cassandra.userName }}
+        - name: CASSANDRA_USERNAME
+          value: {{ .Values.cassandra.userName | quote }}
+        - name: CASSANDRA_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: {{ template "lats.fullname" . }}-casspwd
+              key: password
+{{- end }}
+        - name: CASSANDRA_CONTACTPOINTS
+          value: {{ .Values.cassandra.contactPoints | quote }}
+
+# ------ Redis -------- #
+        - name: REDIS_HOST
+          value: {{ .Values.redis.host | quote }}
+        - name: REDIS_PORT
+          value: {{ .Values.redis.port | quote }}
+{{- if .Values.redis.password }}
+        - name: REDIS_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: {{ template "lats.fullname" . }}-redispwd
+              key: password
+{{- end }}
+        - name: REDIS_SENTINEL_MASTER
+          value: {{ .Values.redis.sentinel.master | quote }}
+        - name: REDIS_SENTINEL_HOST1
+          value: {{ .Values.redis.sentinel.host1 | quote }}
+        - name: REDIS_SENTINEL_PORT1
+          value: {{ .Values.redis.sentinel.port1 | quote }}
+        - name: REDIS_SENTINEL_HOST2
+          value: {{ .Values.redis.sentinel.host2 | quote }}
+        - name: REDIS_SENTINEL_PORT2
+          value: {{ .Values.redis.sentinel.port2 | quote }}
+        - name: REDIS_SENTINEL_HOST3
+          value: {{ .Values.redis.sentinel.host3 | quote }}
+        - name: REDIS_SENTINEL_PORT3
+          value: {{ .Values.redis.sentinel.port3 | quote }}
+        - name: SERVICES_LTMS_ADDRESS
+          value: {{ .Values.services.ltms.address | quote }}
+        - name: SERVICES_LTMS_PORT
+          value: {{ .Values.services.ltms.port | quote }}
+        - name: SERVICES_LAMS_ADDRESS
+          value: {{ .Values.services.lams.address | quote }}
+        - name: SERVICES_LAMS_PORT
+          value: {{ .Values.services.lams.port | quote }}
+
+# ------ Token -------- #
+{{- if .Values.token.auth.secret }}
+        - name: TOKEN_AUTH_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: {{ template "lats.fullname" . }}-secrets
+              key: auth
+        - name: TOKEN_AUTH_EXPIRETIME
+          value: {{ .Values.token.auth.expireTime | quote }}
+{{- end }}
+{{- if .Values.token.access.secret }}
+        - name: TOKEN_ACCESS_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: {{ template "lats.fullname" . }}-secrets
+              key: access
+{{- end }}
+{{- if .Values.token.verify.secret }}
+        - name: TOKEN_VERIFY_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: {{ template "lats.fullname" . }}-secrets
+              key: verify
+        - name: TOKEN_VERIFY_EXPIRETIME
+          value: {{ .Values.token.verify.expireTime | quote }}
+{{- end }}
+{{- if .Values.token.admin.secret }}
+        - name: TOKEN_ADMIN_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: {{ template "lats.fullname" . }}-secrets
+              key: admin
+        - name: TOKEN_ADMIN_EXPIRETIME
+          value: {{ .Values.token.admin.expireTime | quote }}
+{{- end }}
+
+# ------ Swagger -------- #
+        - name: SWAGGER_APIVERSION
+          value: {{ .Values.swagger.apiVersion | quote }}
+        - name: SWAGGER_LICENSETEXT
+          value: {{ .Values.swagger.licenseText | quote }}
+        - name: SWAGGER_TITLE
+          value: {{ .Values.swagger.title | quote }}
+        - name: SWAGGER_DESCRIPTION
+          value: {{ .Values.swagger.description | quote }}
+
+#------- Vault----------- #
+        - name: SPRING_CLOUD_VAULT_GENERIC_ENABLED
+          value: {{ .Values.spring.cloud.vault.generic.enabled | quote }}
+        - name: SPRING_CLOUD_VAULT_HOST
+          value: {{ .Values.spring.cloud.vault.host | quote }}
+        - name: SPRING_CLOUD_VAULT_PORT
+          value: {{ .Values.spring.cloud.vault.port | quote }}
+        - name: SPRING_CLOUD_VAULT_SCHEME
+          value: {{ .Values.spring.cloud.vault.scheme | quote }}
+        - name: SPRING_CLOUD_VAULT_AUTHENTICATION
+          value: {{ .Values.spring.cloud.vault.authentication | quote }}
+        - name: SPRING_CLOUD_VAULT_TOKEN
+          value: {{ .Values.spring.cloud.vault.token | quote }}
+        - name: SPRING_CLOUD_VAULT_SSL_TRUST_STORE
+          value: {{ index .Values.spring.cloud.vault.ssl "turst-store-cert" | quote }}
+        - name: SPRING_CLOUD_VAULT_SSL_TRUST_STORE_PASSWORD
+          value: {{ index .Values.spring.cloud.vault.ssl "trust-store-password" | quote }}
+        - name: SPRING_CLOUD_VAULT_SSL_KEY_STORE
+          value: {{ index .Values.spring.cloud.vault.ssl "key-store-cert" | quote }}
+        - name: SPRING_CLOUD_VAULT_SSL_KEY_STORE_PASSWORD
+          value: {{ index .Values.spring.cloud.vault.ssl "key-store-password" | quote }}
+    {{- with .Values.nodeSelector }}
+      nodeSelector:
+{{ toYaml . | indent 8 }}
+    {{- end }}
+    {{- with .Values.affinity }}
+      affinity:
+{{ toYaml . | indent 8 }}
+    {{- end }}
+    {{- with .Values.tolerations }}
+      tolerations:
+{{ toYaml . | indent 8 }}
+    {{- end }}

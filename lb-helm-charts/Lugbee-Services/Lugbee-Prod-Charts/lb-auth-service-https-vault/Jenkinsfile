@@ -1,0 +1,107 @@
+#!/usr/bin/env groovy
+
+@Library('jenkins-shared-lib') _
+
+pipeline {
+  environment {
+    /*
+    SLACK_CHANNEL = "#lb-devops-feed"
+	*/
+    NAMESPACE = "lb-auth"
+    APP_NAME = "lb-auth-service"
+    DOCKER_ROOT = "gcr.io/tecore-dev"
+    //IMAGE_NAME = "gcr.io/tecore-dev/${NAMESPACE}/${APP_NAME}"
+    IMAGE_NAME = "$DOCKER_ROOT/${NAMESPACE}/${APP_NAME}"
+    IMAGE_BUILD_TAG = "$BRANCH_NAME-$BUILD_NUMBER"
+    HELM_CHART_NAME = "lb-auth-service"
+    //DEV_BRANCH = "develop"
+    DEV_BRANCH = "dev"
+  }
+  agent {
+    kubernetes(builders.multi([
+      "mvn":"maven:3-jdk-10",
+      "gcloud":"gcr.io/google.com/cloudsdktool/cloud-sdk:latest",
+      "helm":"lachlanevenson/k8s-helm:v3.4.2"
+    ]))
+  }
+  options {
+    skipDefaultCheckout()
+    buildDiscarder(logRotator(numToKeepStr: '15'))
+  }
+  stages {
+    stage('Checkout') {
+      steps {
+        container('mvn') {
+          script {
+            def vars = checkout scm
+            vars.each { k,v -> env.setProperty(k, v) }
+          }
+          /*
+          slackSend channel: SLACK_CHANNEL, message: slackStartMsg()
+          slackSend channel: SLACK_CHANNEL, message: "", attachments: slackBuildInfo()
+          */
+        }
+      }
+    }
+    stage('Build Dev') {
+      when {
+        branch env.DEV_BRANCH
+      }
+      stages {
+        stage('Build Mvn') {
+          steps {
+            container('mvn') {
+              sh 'mvn clean install -DskipTests'
+              //dir('/home/jenkins/agent/workspace/*/target'){
+                stash name: 'jar', includes: 'target/*.jar'
+              //}
+              //stash name: 'jar', includes: '/home/jenkins/agent/workspace/*/target/*.jar'
+              //dockerBuildAndPushToRegistry "${NAMESPACE}/${APP_NAME}", [IMAGE_BUILD_TAG]
+			  //dockerBuildAndPushToRegistry "${IMAGE_NAME}", [IMAGE_BUILD_TAG]
+			  //sh "docker version"
+            }
+          }
+        }
+        stage('Build Docker') {
+          steps {
+            container('gcloud') {
+              //sh 'mvn clean install -DskipTests'            
+              //dockerBuildAndPushToRegistry "${NAMESPACE}/${APP_NAME}", [IMAGE_BUILD_TAG]
+              //dockerBuildAndPushToRegistry "${IMAGE_NAME}", [IMAGE_BUILD_TAG]
+              //sh "docker version"
+              withCredentials([[$class: 'FileBinding', credentialsId: 'gcr-service-account', variable: 'JSON_KEY']]) {
+                unstash 'jar'
+                sh 'gcloud auth activate-service-account --key-file $JSON_KEY'
+                sh 'gcloud builds submit --tag ${IMAGE_NAME}:${IMAGE_BUILD_TAG} .'
+              }
+            }
+          }
+        }
+		/*
+        stage("Helm chart") {
+          steps {
+            container('helm') {
+              helmBuildAndPushToRegistry HELM_CHART_NAME
+            }
+          }
+        }
+		*/
+        stage('Deploy') {
+          steps {
+            deployHelmTo "dev", NAMESPACE
+          }
+        }
+      }
+      post {
+        success {
+          //container('mvn') echo 'Success..' { slackSend channel: SLACK_CHANNEL, message: slackEndMsg(), color: 'good' }
+		  container('mvn') { echo 'Success..' }
+        }
+        failure {
+          //container('mvn') echo 'Failed..' { slackSend channel: SLACK_CHANNEL, message: slackEndMsg(), color: 'danger' }
+		  container('mvn') { echo 'Failed..' }
+        }
+      }
+    }
+  }
+}
